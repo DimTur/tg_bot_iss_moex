@@ -5,6 +5,10 @@ from datetime import datetime
 from aiohttp import ClientSession
 
 
+new_data_list = []
+old_data_list = []
+
+
 def get_url(secid: str):
     return f"https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/{secid}/.json?iss.only=marketdata"
 
@@ -42,16 +46,31 @@ async def get_json_data(secid: str, session):
     return formatted_data
 
 
+async def get_and_update_data(secid: str, session, new_data_list):
+    while True:
+        dict_data = await get_json_data(secid, session)
+        new_data_list.append(dict_data[0])
+        print(f"new list: {new_data_list}")
+        await asyncio.sleep(5)
+
+
 async def main():
     session = ClientSession()
     secids = ["SBER", "ABIO", "AFLT", "AGRO", "SELG", "TGKA", "VTBR"]
-    tasks = [get_json_data(secid, session) for secid in secids]
-    result = await asyncio.gather(*tasks)
-    # print(result)
-    new_list = []
-    for item in result:
-        print(item)
-    await session.close()
+    tasks = []
 
+    for secid in secids:
+        task = asyncio.create_task(get_and_update_data(secid, session, new_data_list))
+        tasks.append(task)
 
-asyncio.run(main())
+    while True:
+        # print(f"new list: {new_data_list}")
+        await asyncio.sleep(5)
+        old_data_list = list(new_data_list)
+        print(f"old list: {old_data_list}")
+        new_data_list.clear()
+
+if __name__ == "__main__":
+    new_data_list = []
+    old_data_list = []
+    asyncio.run(main())
